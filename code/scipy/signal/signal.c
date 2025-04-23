@@ -343,6 +343,7 @@ mp_obj_t signal_oaconvolve_envelop(size_t n_args, const mp_obj_t *pos_args, mp_m
     fft_kernel(kernel_fft_array, fft_size, 1);
 
     mp_float_t real, imag; // For complex multiplication
+    mp_float_t module = 0;
     size_t current_segment_size = segment_len;
     mp_float_t (*funca)(void *) = ndarray_get_float_function(a->dtype);
 
@@ -403,12 +404,12 @@ mp_obj_t signal_oaconvolve_envelop(size_t n_args, const mp_obj_t *pos_args, mp_m
             }
             continue;
         }
-        #endif
-        
-        
+        #endif       
+           
         for (size_t j = 0; j < fft_size; j++) {
             if ((i + j) < (output_len)) { // adds only real part
-                output_array[i + j] += (segment_fft_array[j * 2] / fft_size);
+                module = MICROPY_FLOAT_C_FUN(sqrt)(segment_fft_array[j * 2]*segment_fft_array[j * 2]+segment_fft_array[j * 2+1]*segment_fft_array[j * 2+1]);
+                output_array[i + j] += (module / fft_size);
             }
         }   
     }
