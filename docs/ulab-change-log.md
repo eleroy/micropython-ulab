@@ -1,3 +1,33 @@
+Sun, 16 Mar 2025
+
+version 6.7.4
+
+    re-name integration constants to avoid name clash with EPS ports
+
+Sun, 26 Jan 2025
+
+version 6.7.3
+
+    fix keepdims for min, max, argmin, argmax
+    
+Sun, 19 Jan 2025
+
+version 6.7.2
+
+    fix keepdims for std, remove redundant macros from numerical.h, update documentation
+
+Mon, 30 Dec 2024
+
+version 6.7.1
+
+    add keepdims keyword argument to numerical functions
+
+Sun, 15 Dec 2024
+
+version 6.7.0
+
+    add scipy.integrate module
+
 Sun, 24 Nov 2024
 
 version 6.6.1
