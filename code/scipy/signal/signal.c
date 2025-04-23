@@ -487,14 +487,12 @@ mp_obj_t signal_hilbert(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_ar
 
     // Compute kernel fft in place
     fft_kernel(signal_fft_array, fft_size, 1);
+    int high_pass_freq = int((fft_size*90000/1000000))//90kHZ high pass
     for (size_t i = 0; i < fft_size; i += 1) {
-        if(i==0 || i==fft_size/2){
-            signal_fft_array[i * 2] = signal_fft_array[i * 2];
-            signal_fft_array[i * 2+1] = signal_fft_array[i * 2+1];            
-        }else if(i<fft_size/2){
+        if((i>high_pass_freq) && (i<fft_size/2)){
             signal_fft_array[i * 2] = signal_fft_array[i * 2]*2;
-            signal_fft_array[i * 2+1] = signal_fft_array[i * 2+1]*2;
-        }else{
+            signal_fft_array[i * 2+1] = signal_fft_array[i * 2+1]*2;        
+        }else if (i>fft_size/2){
             signal_fft_array[i * 2] = 0;
             signal_fft_array[i * 2+1] = 0;
         }           
