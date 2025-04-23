@@ -490,7 +490,7 @@ mp_obj_t signal_hilbert(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_ar
         if(i==0 || i==fft_size/2){
             signal_fft_array[i * 2] = signal_fft_array[i * 2];
             signal_fft_array[i * 2+1] = signal_fft_array[i * 2+1];            
-        }else if(j<fft_size/2){
+        }else if(i<fft_size/2){
             signal_fft_array[i * 2] = signal_fft_array[i * 2]*2;
             signal_fft_array[i * 2+1] = signal_fft_array[i * 2+1]*2;
         }else{
