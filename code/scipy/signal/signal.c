@@ -508,7 +508,7 @@ mp_obj_t signal_hilbert(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_ar
         // Overlap, Add and normalized inverse fft
         for (size_t j = 0; j < fft_size * 2; j++) {
             if (j < (output_len * 2)) {
-                output_array[j] = (segment_fft_array[j] / fft_size);
+                output_array[j] = (signal_fft_array[j] / fft_size);
             }
         }
         return MP_OBJ_FROM_PTR(output);
@@ -518,7 +518,7 @@ mp_obj_t signal_hilbert(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_ar
     float module = 0;
     for (size_t j = 0; j < fft_size; j++) {
         if ((j) < (output_len)) { // adds only real part
-            module = MICROPY_FLOAT_C_FUN(sqrt)(segment_fft_array[j * 2]*segment_fft_array[j * 2]+segment_fft_array[j * 2+1]*segment_fft_array[j * 2+1]);
+            module = MICROPY_FLOAT_C_FUN(sqrt)(signal_fft_array[j * 2]*signal_fft_array[j * 2]+signal_fft_array[j * 2+1]*signal_fft_array[j * 2+1]);
             output_array[j] = module / fft_size;
         }
     }   
