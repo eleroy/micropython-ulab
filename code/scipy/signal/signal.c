@@ -606,7 +606,7 @@ mp_obj_t signal_envelop(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_ar
     } else if (!mp_obj_is_int(bp_in->items[1]) && !mp_obj_is_float(bp_in->items[1])) {
         mp_raise_TypeError(MP_ERROR_TEXT("First item must be int, float, or None"));
     }else{
-        bp_start = mp_obj_get_int(bp_in->items[1]);
+        bp_stop = mp_obj_get_int(bp_in->items[1]);
     }  
 
     size_t output_len = signal_len;
