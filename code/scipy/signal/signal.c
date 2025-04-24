@@ -527,6 +527,151 @@ mp_obj_t signal_hilbert(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_ar
 MP_DEFINE_CONST_FUN_OBJ_KW(signal_hilbert_obj, 1, signal_hilbert);
 #endif /* ULAB_SCIPY_SIGNAL_HAS_HILBERT */
 
+
+#if ULAB_SCIPY_SIGNAL_HAS_ENVELOP
+
+mp_obj_t signal_envelop(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    static const mp_arg_t allowed_args[] = {
+        {MP_QSTR_z, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE}},
+        {MP_QSTR_bp_in, MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE}},
+    };
+
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+
+    if (!mp_obj_is_type(args[0].u_obj, &ulab_ndarray_type)) {
+        mp_raise_TypeError(MP_ERROR_TEXT("oa convolve arguments must be ndarrays"));
+    }
+
+    ndarray_obj_t *a = MP_OBJ_TO_PTR(args[0].u_obj);
+// deal with linear arrays only
+#if ULAB_MAX_DIMS > 1
+    if ((a->ndim != 1)) {
+        mp_raise_TypeError(MP_ERROR_TEXT("convolve arguments must be linear arrays"));
+    }
+#endif
+    size_t signal_len = a->len;
+    if (signal_len == 0) {
+        mp_raise_TypeError(MP_ERROR_TEXT("convolve arguments must not be empty"));
+    }
+
+    mp_obj_tuple_t *bp_in;
+    if (args[1].u_obj == mp_const_none) {
+        // Crée un tuple par défaut (1, None)
+        mp_obj_t defaults[2];
+        defaults[0] = mp_obj_new_int(1);
+        defaults[1] = mp_const_none;
+        bp_in = MP_OBJ_TO_PTR(mp_obj_new_tuple(2, defaults));
+    } else {
+        // Vérifie si l'argument est un tuple ou une liste de longueur 2
+        if (!mp_obj_is_tuple_or_list_fixed_length(args[1].u_obj, 2)) {
+            mp_raise_TypeError(MP_ERROR_TEXT("Argument must be a tuple or list of length 2"));
+        }
+        bp_in = MP_OBJ_TO_PTR(arg);
+    }
+    // Accède aux éléments du tuple
+    int bp_start, bp_stop;
+    
+
+    // Vérifie que les éléments sont des int ou des float
+    if (tuple->items[0] == mp_const_none) {
+        bp_start = 1; // Valeur par défaut pour item1
+    } else if (!mp_obj_is_int(tuple->items[0]) && !mp_obj_is_float(tuple->items[0])) {
+        mp_raise_TypeError(MP_ERROR_TEXT("First item must be int, float, or None"));
+    }else{
+        bp_start = mp_obj_get_int(tuple->items[0]);
+    }      
+
+    size_t fft_size = 1;
+    while (fft_size < signal_len) {
+        fft_size *= 2; // Find smallest power of 2 for fft size
+    }
+
+    if (bp_stop == mp_const_none) {
+        bp_stop = fft_size/2; // Valeur par défaut pour item1
+    } else if (!mp_obj_is_int(tuple->items[1]) && !mp_obj_is_float(tuple->items[1])) {
+        mp_raise_TypeError(MP_ERROR_TEXT("First item must be int, float, or None"));
+    }else{
+        bp_start = mp_obj_get_int(tuple->items[1]);
+    }  
+
+    size_t output_len = signal_len;
+    uint8_t dtype = NDARRAY_FLOAT;
+#if ULAB_SUPPORTS_COMPLEX
+    if (a->dtype == NDARRAY_COMPLEX) {
+        dtype = NDARRAY_COMPLEX;
+    }
+#endif
+
+    uint8_t sz = 2 * sizeof(mp_float_t);
+
+    // Buffer allocation
+    mp_float_t *signal_fft_array = m_new0(mp_float_t, fft_size * 2);
+    ndarray_obj_t *output = ndarray_new_linear_array(output_len, dtype);
+    mp_float_t *output_array = (mp_float_t *)output->array;
+    uint8_t *signal_array = (uint8_t *)a->array;
+
+    // Copy kernel data
+    if (a->dtype == NDARRAY_COMPLEX) {
+        for (size_t i = 0; i < signal_len; i++){
+            memcpy(signal_fft_array, signal_array, sz);
+            signal_fft_array += 2;
+            signal_array += a->strides[ULAB_MAX_DIMS - 1];
+        }
+    }
+    else {
+        mp_float_t (*func)(void *) = ndarray_get_float_function(a->dtype);
+        for (size_t i = 0; i < signal_len; i++) {
+            // real part; the imaginary part is 0, no need to assign
+            *signal_fft_array = func(signal_array);
+            signal_fft_array += 2;
+            signal_array += a->strides[ULAB_MAX_DIMS - 1];
+        }
+    }
+    signal_fft_array -= 2 * signal_len;
+
+    // Compute kernel fft in place
+    fft_kernel(signal_fft_array, fft_size, 1);
+    for (size_t i = 0; i < fft_size; i += 1) {
+        if((i>=bp_start) && (i<=bp_stop)){
+            signal_fft_array[i * 2] = signal_fft_array[i * 2]*2;
+            signal_fft_array[i * 2+1] = signal_fft_array[i * 2+1]*2;        
+        }else if (i>bp_stop){
+            signal_fft_array[i * 2] = 0;
+            signal_fft_array[i * 2+1] = 0;
+        }           
+    }
+
+   
+    // Inverse FFT in place
+    fft_kernel(signal_fft_array, fft_size, -1);
+    
+    #if ULAB_SUPPORTS_COMPLEX
+    if (dtype == NDARRAY_COMPLEX) {
+        // Overlap, Add and normalized inverse fft
+        for (size_t j = 0; j < fft_size * 2; j++) {
+            if (j < (output_len * 2)) {
+                output_array[j] = (signal_fft_array[j] / fft_size);
+            }
+        }
+        return MP_OBJ_FROM_PTR(output);
+    }
+    #endif
+    
+    float module = 0;
+    for (size_t j = 0; j < fft_size; j++) {
+        if ((j) < (output_len)) { // adds only real part
+            module = MICROPY_FLOAT_C_FUN(sqrt)(signal_fft_array[j * 2]*signal_fft_array[j * 2]+signal_fft_array[j * 2+1]*signal_fft_array[j * 2+1]);
+            output_array[j] = module / fft_size;
+        }
+    }   
+    
+    return MP_OBJ_FROM_PTR(output);
+}
+MP_DEFINE_CONST_FUN_OBJ_KW(signal_envelop_obj, 1, signal_envelop);
+#endif /* ULAB_SCIPY_SIGNAL_HAS_ENVELOP */
+
+
 static const mp_rom_map_elem_t ulab_scipy_signal_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_signal) },
     #if ULAB_SCIPY_SIGNAL_HAS_SOSFILT & ULAB_MAX_DIMS > 1
@@ -540,6 +685,9 @@ static const mp_rom_map_elem_t ulab_scipy_signal_globals_table[] = {
     #endif
     #if ULAB_SCIPY_SIGNAL_HAS_HILBERT
         { MP_ROM_QSTR(MP_QSTR_hilbert), MP_ROM_PTR(&signal_hilbert_obj) },
+    #endif
+    #if ULAB_SCIPY_SIGNAL_HAS_ENVELOP
+        { MP_ROM_QSTR(MP_QSTR_envelop), MP_ROM_PTR(&signal_envelop_obj) },
     #endif
 };
 
