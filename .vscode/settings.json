@@ -1,0 +1,8 @@
+{
+  "files.associations": {
+    "runtime.h": "c",
+    "tuple": "c",
+    "complex": "c",
+    "format": "c"
+  }
+}

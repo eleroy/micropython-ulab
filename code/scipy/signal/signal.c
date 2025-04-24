@@ -567,19 +567,19 @@ mp_obj_t signal_envelop(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_ar
         if (!mp_obj_is_tuple_or_list_fixed_length(args[1].u_obj, 2)) {
             mp_raise_TypeError(MP_ERROR_TEXT("Argument must be a tuple or list of length 2"));
         }
-        bp_in = MP_OBJ_TO_PTR(arg);
+        bp_in = MP_OBJ_TO_PTR(args[1].u_obj);
     }
     // Accède aux éléments du tuple
     int bp_start, bp_stop;
     
 
     // Vérifie que les éléments sont des int ou des float
-    if (tuple->items[0] == mp_const_none) {
+    if (bp_in->items[0] == mp_const_none) {
         bp_start = 1; // Valeur par défaut pour item1
-    } else if (!mp_obj_is_int(tuple->items[0]) && !mp_obj_is_float(tuple->items[0])) {
+    } else if (!mp_obj_is_int(bp_in->items[0]) && !mp_obj_is_float(bp_in->items[0])) {
         mp_raise_TypeError(MP_ERROR_TEXT("First item must be int, float, or None"));
     }else{
-        bp_start = mp_obj_get_int(tuple->items[0]);
+        bp_start = mp_obj_get_int(bp_in->items[0]);
     }      
 
     size_t fft_size = 1;
@@ -589,10 +589,10 @@ mp_obj_t signal_envelop(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_ar
 
     if (bp_stop == mp_const_none) {
         bp_stop = fft_size/2; // Valeur par défaut pour item1
-    } else if (!mp_obj_is_int(tuple->items[1]) && !mp_obj_is_float(tuple->items[1])) {
+    } else if (!mp_obj_is_int(bp_in->items[1]) && !mp_obj_is_float(bp_in->items[1])) {
         mp_raise_TypeError(MP_ERROR_TEXT("First item must be int, float, or None"));
     }else{
-        bp_start = mp_obj_get_int(tuple->items[1]);
+        bp_start = mp_obj_get_int(bp_in->items[1]);
     }  
 
     size_t output_len = signal_len;
